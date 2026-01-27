@@ -9,6 +9,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,400&family=Montserrat:wght@200;300;400;500&display=swap" rel="stylesheet">
     <script>
+      // Safety check: Polyfill process.env to prevent "process is not defined" crashes in browser
+      window.process = window.process || { env: { API_KEY: '' } };
+
       tailwind.config = {
         theme: {
           extend: {
@@ -87,5 +90,7 @@
 </head>
   <body>
     <div id="root"></div>
+    <!-- This script tag was missing, causing the blank screen -->
+    <script type="module" src="./index.tsx"></script>
   </body>
 </html>
