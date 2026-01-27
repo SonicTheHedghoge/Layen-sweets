@@ -1,91 +1,109 @@
 import { Product, Order, Recipe, SiteContent } from '../types';
 
+// ==============================================================================
+// 📢 ADMIN PUBLISH AREA
+// Paste the code generated from the Admin Dashboard "DEPLOY TO LIVE" button 
+// between the markers below to update your live website content permanently.
+// ==============================================================================
+
 const INITIAL_PRODUCTS: Product[] = [
-  // Macarons
   {
-    id: 'm1',
-    name: 'Rose & Litchi',
-    description: 'Crème délicate aux pétales de rose avec un cœur de litchi.',
-    price: 3.5,
-    image: 'https://picsum.photos/id/431/600/600',
-    category: 'Macaron',
-    ingredients: ['Poudre d\'amande', 'Eau de rose', 'Litchi'],
-    available: true
+    "id": "m1",
+    "name": "Rose & Litchi",
+    "description": "Crème délicate aux pétales de rose avec un cœur de litchi.",
+    "price": 3.5,
+    "image": "https://picsum.photos/id/431/600/600",
+    "category": "Macaron",
+    "ingredients": [
+      "Poudre d'amande",
+      "Eau de rose",
+      "Litchi"
+    ],
+    "available": true
   },
   {
-    id: 'm2',
-    name: 'Pistache Suprême',
-    description: 'Pistaches siciliennes torréfiées.',
-    price: 4.0,
-    image: 'https://picsum.photos/id/493/600/600',
-    category: 'Macaron',
-    ingredients: ['Pistache'],
-    available: true
-  },
-  // Cakes
-  {
-    id: 'c1',
-    name: 'Royal Chocolat',
-    description: 'Sept couches de textures au chocolat noir.',
-    price: 45.0,
-    image: 'https://picsum.photos/id/292/600/600',
-    category: 'Cake',
-    ingredients: ['Chocolat Noir', 'Feuille d\'Or'],
-    available: true
+    "id": "m2",
+    "name": "Pistache Suprême",
+    "description": "Pistaches siciliennes torréfiées.",
+    "price": 4,
+    "image": "https://picsum.photos/id/493/600/600",
+    "category": "Macaron",
+    "ingredients": [
+      "Pistache"
+    ],
+    "available": true
   },
   {
-    id: 'c2',
-    name: 'Fraisier Classique',
-    description: 'Gâteau classique aux fraises avec crème mousseline.',
-    price: 40.0,
-    image: 'https://picsum.photos/id/1080/600/600',
-    category: 'Cake',
-    ingredients: ['Fraises', 'Vanille'],
-    available: true
+    "id": "c1",
+    "name": "Royal Chocolat",
+    "description": "Sept couches de textures au chocolat noir.",
+    "price": 45,
+    "image": "https://picsum.photos/id/292/600/600",
+    "category": "Cake",
+    "ingredients": [
+      "Chocolat Noir",
+      "Feuille d'Or"
+    ],
+    "available": true
   },
-  // Sablés
   {
-    id: 's1',
-    name: 'Sablé Breton',
-    description: 'Sablé français au beurre salé, friable et fondant.',
-    price: 2.0,
-    image: 'https://picsum.photos/id/312/600/600',
-    category: 'Sable',
-    ingredients: ['Beurre Salé'],
-    available: true,
-    sableDressage: true // Available with dressage
+    "id": "c2",
+    "name": "Fraisier Classique",
+    "description": "Gâteau classique aux fraises avec crème mousseline.",
+    "price": 40,
+    "image": "https://picsum.photos/id/1080/600/600",
+    "category": "Cake",
+    "ingredients": [
+      "Fraises",
+      "Vanille"
+    ],
+    "available": true
+  },
+  {
+    "id": "s1",
+    "name": "Sablé Breton",
+    "description": "Sablé français au beurre salé, friable et fondant.",
+    "price": 2,
+    "image": "https://picsum.photos/id/312/600/600",
+    "category": "Sable",
+    "ingredients": [
+      "Beurre Salé"
+    ],
+    "available": true,
+    "sableDressage": true
   }
 ];
 
 const INITIAL_RECIPES: Recipe[] = [
   {
-    id: 'r1',
-    title: 'L\'Art du Macaronage',
-    content: 'Le macaronage est l\'étape la plus critique. Vous voulez obtenir une consistance semblable à de la lave en fusion...',
-    image: 'https://picsum.photos/id/292/800/600'
+    "id": "r1",
+    "title": "L'Art du Macaronage",
+    "content": "Le macaronage est l'étape la plus critique. Vous voulez obtenir une consistance semblable à de la lave en fusion...",
+    "image": "https://picsum.photos/id/292/800/600"
   }
 ];
 
 export const INITIAL_CONTENT: SiteContent = {
-  logoText: 'LAYEN SWEETS',
-  logoImage: '',
-  contactPhone: '96948548',
-  facebookUrl: 'https://www.facebook.com/Lazuritedjerba',
-  
-  heroTitle: 'Douceurs Artisanales,\nFaites avec Amour',
-  heroSubtitle: 'Excellence Tunisienne',
-  heroButtonText: 'Commander',
-  heroImage: 'https://picsum.photos/id/429/600/600',
-  heroImage2: 'https://picsum.photos/id/431/500/500',
-  heroImage3: 'https://picsum.photos/id/488/500/500',
-  heroVideo: '', 
-  
-  aboutTitle: 'L\'Art de la Douceur Délicate',
-  aboutText: 'Chez Layen Sweets, nous croyons qu\'un dessert est plus que du sucre. C\'est un moment de pure joie. De nos Macarons signature à nos Sablés complexes et Gâteaux de célébration, tout est poché à la main et conçu avec passion.',
-  aboutImage: 'https://picsum.photos/id/225/800/1000',
-  
-  chefQuote: '"La patience est l\'ingrédient le plus important du macaronage."'
+  "logoText": "LAYEN SWEETS",
+  "logoImage": "",
+  "contactPhone": "96948548",
+  "facebookUrl": "https://www.facebook.com/Lazuritedjerba",
+  "heroTitle": "Douceurs Artisanales,\nFaites avec Amour",
+  "heroSubtitle": "Excellence Tunisienne",
+  "heroButtonText": "Commander",
+  "heroImage": "https://picsum.photos/id/429/600/600",
+  "heroImage2": "https://picsum.photos/id/431/500/500",
+  "heroImage3": "https://picsum.photos/id/488/500/500",
+  "heroVideo": "",
+  "aboutTitle": "L'Art de la Douceur Délicate",
+  "aboutText": "Chez Layen Sweets, nous croyons qu'un dessert est plus que du sucre. C'est un moment de pure joie. De nos Macarons signature à nos Sablés complexes et Gâteaux de célébration, tout est poché à la main et conçu avec passion.",
+  "aboutImage": "https://picsum.photos/id/225/800/1000",
+  "chefQuote": "\"La patience est l'ingrédient le plus important du macaronage.\""
 };
+
+// ==============================================================================
+// END OF PUBLISH AREA
+// ==============================================================================
 
 // Updated DB Name to force fresh content load for user
 const DB_NAME = 'LayenSweetsDB_V3';

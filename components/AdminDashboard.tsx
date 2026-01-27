@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Order, SiteContent, Product, ProductCategory } from '../types';
+import { Order, SiteContent, Product, ProductCategory, Recipe } from '../types';
 import { dataService, INITIAL_CONTENT } from '../services/dataService';
 
 interface AdminDashboardProps {
@@ -17,12 +17,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
   // Data State
   const [orders, setOrders] = useState<Order[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [content, setContent] = useState<SiteContent>(INITIAL_CONTENT);
   
   // UI State
   const [activeTab, setActiveTab] = useState<'orders' | 'products' | 'content'>('orders');
   const [saveStatus, setSaveStatus] = useState('');
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
+  const [showDeployModal, setShowDeployModal] = useState(false);
   
   // Product Edit State
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -74,14 +76,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
   useEffect(() => {
     if (isAuthenticated) {
       const loadData = async () => {
-        const [loadedOrders, loadedContent, loadedProducts] = await Promise.all([
+        const [loadedOrders, loadedContent, loadedProducts, loadedRecipes] = await Promise.all([
           dataService.getOrders(),
           dataService.getSiteContent(),
-          dataService.getProducts()
+          dataService.getProducts(),
+          dataService.getRecipes()
         ]);
         setOrders(loadedOrders);
         setContent(loadedContent);
         setProducts(loadedProducts);
+        setRecipes(loadedRecipes);
       };
       loadData();
     }
@@ -99,7 +103,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
     try {
       setSaveStatus('Syncing Assets...');
       await dataService.updateSiteContent(content);
-      setSaveStatus('Changes Published!');
+      setSaveStatus('Changes Saved Locally!');
       setTimeout(() => setSaveStatus(''), 3000);
     } catch (error) {
       console.error(error);
@@ -123,7 +127,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
       await dataService.saveProducts(updatedProducts);
       setProducts(updatedProducts);
       setEditingProduct(null);
-      setSaveStatus('Inventory Updated!');
+      setSaveStatus('Inventory Saved Locally!');
       setTimeout(() => setSaveStatus(''), 3000);
     } catch (error) {
       alert('Failed to save product. Image might be too large.');
@@ -194,10 +198,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
   const renderUploadButton = (targetType: 'content' | 'product', field: string, currentValue: string) => {
     const key = targetType === 'content' ? field : 'productImage';
     const progress = uploadProgress[key];
-    
-    // Performance Optimization:
-    // If currentValue is a massive Base64 string, rendering it in an input field causes significant lag.
-    // We check if it starts with 'data:', if so, we hide the raw string and show a placeholder.
     const isBase64 = currentValue?.startsWith('data:');
     const displayValue = isBase64 ? '' : currentValue;
     const placeholder = isBase64 ? '• Image Data Loaded (Hidden for Performance) •' : 'Image URL or Upload ->';
@@ -223,19 +223,31 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
     );
   };
 
-  // --- RENDER LOGIN (GOD TIER DESIGN) ---
+  // --- EXPORT CONFIGURATION (The Solution for Vercel/Mobile) ---
+  const generateDeployCode = () => {
+    return `const INITIAL_PRODUCTS: Product[] = ${JSON.stringify(products, null, 2)};
+
+const INITIAL_RECIPES: Recipe[] = ${JSON.stringify(recipes, null, 2)};
+
+export const INITIAL_CONTENT: SiteContent = ${JSON.stringify(content, null, 2)};`;
+  };
+
+  const copyToClipboard = () => {
+    const code = generateDeployCode();
+    navigator.clipboard.writeText(code);
+    alert("Copied! Now paste this into services/dataService.ts");
+  };
+
+  // --- RENDER LOGIN ---
   if (!isAuthenticated) {
     const isLocked = lockoutUntil && Date.now() < lockoutUntil;
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#050505] relative overflow-hidden font-sans">
-        {/* Dynamic Matrix Background */}
         <div className="absolute inset-0 opacity-20 pointer-events-none">
              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-radial from-layen-gold/20 to-transparent blur-[100px] animate-pulse"></div>
         </div>
         
         <div className="relative z-10 w-[450px] bg-[#0a0a0a]/90 backdrop-blur-xl border border-layen-gold/20 p-12 shadow-[0_0_50px_rgba(212,175,55,0.1)] overflow-hidden rounded-sm animate-fade-in-up">
-           
-           {/* Decorative Border Corners */}
            <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-layen-gold"></div>
            <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-layen-gold"></div>
            <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-layen-gold"></div>
@@ -273,7 +285,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
              </button>
            </form>
 
-           {/* Rolling Hash Visual */}
            <div className="mt-12 border-t border-[#1a1a1a] pt-6">
              <div className="flex justify-between items-center text-[9px] text-[#333] mb-2 uppercase tracking-widest">
                 <span>System Integrity</span>
@@ -288,7 +299,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
     );
   }
 
-  // --- RENDER DASHBOARD (PEAK DESIGN) ---
+  // --- RENDER DASHBOARD ---
   return (
     <div className="min-h-screen bg-[#FDFBF7] flex font-sans">
       
@@ -318,24 +329,48 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
         </div>
 
         <div className="p-8 border-t border-white/5">
+           <button 
+             onClick={() => setShowDeployModal(true)}
+             className="w-full bg-layen-gold text-[#050505] py-3 mb-6 text-[10px] font-bold uppercase tracking-widest hover:bg-white transition-colors"
+           >
+             🚀 Deploy to Live
+           </button>
            <button onClick={onExit} className="block w-full text-left text-[10px] text-gray-500 hover:text-white mb-4 uppercase tracking-wider transition-colors">← Return to Site</button>
            <button onClick={() => setIsAuthenticated(false)} className="block w-full text-left text-[10px] text-red-900 hover:text-red-500 uppercase tracking-wider transition-colors">Terminate Session</button>
         </div>
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 md:ml-72 p-12 lg:p-16 overflow-y-auto">
-        <header className="flex justify-between items-end mb-16 animate-fade-in">
+      <main className="flex-1 md:ml-72 p-12 lg:p-16 overflow-y-auto relative">
+        <header className="flex justify-between items-end mb-12 animate-fade-in">
           <div>
             <h2 className="text-gray-400 text-[10px] uppercase tracking-[0.2em] mb-2">Authenticated User</h2>
             <h1 className="text-5xl font-serif text-[#1a1a1a]">Welcome, <span className="text-layen-gold italic">Olfa Gassem</span></h1>
           </div>
-          {saveStatus && (
-            <div className="bg-layen-gold text-white px-8 py-3 rounded-full text-[10px] font-bold uppercase tracking-widest shadow-lg animate-pulse">
-              {saveStatus}
+          <div className="flex gap-4 items-center">
+            {saveStatus && (
+              <div className="bg-layen-gold text-white px-8 py-3 rounded-full text-[10px] font-bold uppercase tracking-widest shadow-lg animate-pulse">
+                {saveStatus}
+              </div>
+            )}
+            <div className="text-xs text-gray-400 text-right">
+              <span className="block font-bold text-gray-300 uppercase tracking-widest">Environment</span>
+              Local Edit Mode
             </div>
-          )}
+          </div>
         </header>
+
+        {/* Warning Banner */}
+        <div className="bg-blue-50 border border-blue-100 p-4 mb-8 rounded-sm flex items-start gap-3">
+          <span className="text-blue-500 text-xl">ⓘ</span>
+          <div>
+            <h4 className="text-blue-800 font-bold text-xs uppercase tracking-widest mb-1">Important: Local Storage</h4>
+            <p className="text-blue-600 text-sm leading-relaxed">
+              Changes made here are saved to this device only. To update the website for mobile users and the public, 
+              please click the <strong className="text-blue-800">DEPLOY TO LIVE</strong> button in the sidebar.
+            </p>
+          </div>
+        </div>
 
         <div className="bg-white rounded-sm shadow-[0_2px_40px_-10px_rgba(0,0,0,0.05)] border border-gray-100 min-h-[600px] p-10 animate-fade-in-up">
           
@@ -490,7 +525,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
                           </div>
 
                           <button type="submit" className="w-full bg-layen-gold text-white py-4 font-bold uppercase tracking-widest hover:bg-[#1a1a1a] transition-colors shadow-xl text-xs">
-                            Save Changes
+                            Save Changes (Local)
                           </button>
                        </div>
                     </form>
@@ -505,7 +540,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
                <div className="flex justify-between items-center mb-10 pb-6 border-b border-gray-100">
                  <h3 className="text-2xl font-serif text-[#1a1a1a]">Aesthetics & Brand</h3>
                  <button onClick={handleContentSave} className="bg-green-600 text-white px-8 py-3 text-[10px] font-bold uppercase tracking-widest hover:bg-green-700 transition-colors shadow-lg">
-                   Publish Updates
+                   Save Locally
                  </button>
                </div>
 
@@ -571,6 +606,47 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
             </div>
           )}
         </div>
+
+        {/* --- DEPLOY MODAL --- */}
+        {showDeployModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm">
+            <div className="bg-white w-full max-w-4xl h-[80vh] rounded-lg shadow-2xl flex flex-col overflow-hidden">
+              <div className="bg-[#1a1a1a] p-6 flex justify-between items-center">
+                <div>
+                   <h3 className="text-xl font-serif text-white">Deploy Configuration</h3>
+                   <p className="text-gray-400 text-xs mt-1">Export your local changes for Vercel deployment</p>
+                </div>
+                <button onClick={() => setShowDeployModal(false)} className="text-gray-400 hover:text-white">✕</button>
+              </div>
+              
+              <div className="flex-1 p-8 overflow-hidden flex flex-col bg-gray-50">
+                <div className="mb-6 bg-blue-50 border border-blue-200 p-4 rounded-md text-sm text-blue-800">
+                  <strong>Instructions:</strong>
+                  <ol className="list-decimal ml-5 mt-2 space-y-2">
+                    <li>Copy the code below.</li>
+                    <li>Open <code>services/dataService.ts</code> in your project code.</li>
+                    <li>Replace the content between the <strong>ADMIN PUBLISH AREA</strong> markers with this code.</li>
+                    <li>Commit and push to Vercel to update the live site for all devices (Mobile/Desktop).</li>
+                  </ol>
+                </div>
+
+                <div className="relative flex-1 border border-gray-300 rounded-md overflow-hidden bg-white shadow-inner">
+                  <textarea 
+                    readOnly
+                    value={generateDeployCode()}
+                    className="w-full h-full p-4 font-mono text-xs text-gray-700 resize-none focus:outline-none"
+                  />
+                  <button 
+                    onClick={copyToClipboard}
+                    className="absolute top-4 right-4 bg-layen-gold text-white px-6 py-2 rounded-full text-xs font-bold uppercase tracking-widest shadow-lg hover:bg-[#1a1a1a] transition-all"
+                  >
+                    Copy Code
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
