@@ -14,6 +14,30 @@ interface Message {
   text: string;
 }
 
+// --- Environment Variable Compatibility Layer ---
+// This ensures process.env.API_KEY exists even in Vite/Vercel environments
+// where variables are typically prefixed with VITE_.
+const ensureApiKey = () => {
+  try {
+    // 1. Ensure global process object exists (polyfilled by index.html, but safety first)
+    if (typeof window !== 'undefined' && !window.process) {
+      (window as any).process = { env: {} };
+    }
+    
+    // 2. If process.env.API_KEY is missing/empty, try to grab from Vite's import.meta.env
+    // @ts-ignore - import.meta is a Vite feature
+    if (!process.env.API_KEY && import.meta && import.meta.env && import.meta.env.VITE_API_KEY) {
+      // @ts-ignore
+      process.env.API_KEY = import.meta.env.VITE_API_KEY;
+    }
+  } catch (e) {
+    console.warn("Env setup warning:", e);
+  }
+};
+
+// Run immediately
+ensureApiKey();
+
 export const LayenAI: React.FC<LayenAIProps> = ({ products, siteContent, language }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState('');
@@ -40,9 +64,14 @@ export const LayenAI: React.FC<LayenAIProps> = ({ products, siteContent, languag
     setIsLoading(true);
 
     try {
+      // Check if key is actually present before calling API to prevent generic error
+      if (!process.env.API_KEY) {
+        console.error("API_KEY is missing. Please add VITE_API_KEY to Vercel Environment Variables.");
+        throw new Error("Missing API Key");
+      }
+
       // Initialize Gemini
-      // Assuming process.env.API_KEY is available as per request
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' }); 
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY }); 
       
       // Build Context (System Prompt)
       const availableProducts = products.filter(p => p.available).map(p => 
@@ -86,9 +115,16 @@ export const LayenAI: React.FC<LayenAIProps> = ({ products, siteContent, languag
       setMessages(prev => [...prev, { role: 'model', text }]);
     } catch (error) {
       console.error('AI Error:', error);
+      let errorMsg = language === 'ar' ? "حدث خطأ في الاتصال." : "Une erreur de connexion est survenue.";
+      
+      // Provide more helpful error if key is missing
+      if (process.env.API_KEY === '') {
+         errorMsg = "Configuration manquante (API Key).";
+      }
+
       setMessages(prev => [...prev, { 
         role: 'model', 
-        text: language === 'ar' ? "حدث خطأ في الاتصال." : "Une erreur de connexion est survenue." 
+        text: errorMsg
       }]);
     } finally {
       setIsLoading(false);
