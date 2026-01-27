@@ -1,10 +1,7 @@
 import { Product, Order, Recipe, SiteContent } from '../types';
+import { supabase } from './supabaseClient';
 
-// ==============================================================================
-// 📢 ADMIN PUBLISH AREA
-// Paste the code generated from the Admin Dashboard "DEPLOY TO LIVE" button 
-// between the markers below to update your live website content permanently.
-// ==============================================================================
+// --- FALLBACK INITIAL DATA (Used if DB is empty or not connected) ---
 
 const INITIAL_PRODUCTS: Product[] = [
   {
@@ -14,11 +11,7 @@ const INITIAL_PRODUCTS: Product[] = [
     "price": 3.5,
     "image": "https://picsum.photos/id/431/600/600",
     "category": "Macaron",
-    "ingredients": [
-      "Poudre d'amande",
-      "Eau de rose",
-      "Litchi"
-    ],
+    "ingredients": ["Poudre d'amande", "Eau de rose", "Litchi"],
     "available": true
   },
   {
@@ -28,9 +21,7 @@ const INITIAL_PRODUCTS: Product[] = [
     "price": 4,
     "image": "https://picsum.photos/id/493/600/600",
     "category": "Macaron",
-    "ingredients": [
-      "Pistache"
-    ],
+    "ingredients": ["Pistache"],
     "available": true
   },
   {
@@ -40,37 +31,8 @@ const INITIAL_PRODUCTS: Product[] = [
     "price": 45,
     "image": "https://picsum.photos/id/292/600/600",
     "category": "Cake",
-    "ingredients": [
-      "Chocolat Noir",
-      "Feuille d'Or"
-    ],
+    "ingredients": ["Chocolat Noir", "Feuille d'Or"],
     "available": true
-  },
-  {
-    "id": "c2",
-    "name": "Fraisier Classique",
-    "description": "Gâteau classique aux fraises avec crème mousseline.",
-    "price": 40,
-    "image": "https://picsum.photos/id/1080/600/600",
-    "category": "Cake",
-    "ingredients": [
-      "Fraises",
-      "Vanille"
-    ],
-    "available": true
-  },
-  {
-    "id": "s1",
-    "name": "Sablé Breton",
-    "description": "Sablé français au beurre salé, friable et fondant.",
-    "price": 2,
-    "image": "https://picsum.photos/id/312/600/600",
-    "category": "Sable",
-    "ingredients": [
-      "Beurre Salé"
-    ],
-    "available": true,
-    "sableDressage": true
   }
 ];
 
@@ -96,136 +58,115 @@ export const INITIAL_CONTENT: SiteContent = {
   "heroImage3": "https://picsum.photos/id/488/500/500",
   "heroVideo": "",
   "aboutTitle": "L'Art de la Douceur Délicate",
-  "aboutText": "Chez Layen Sweets, nous croyons qu'un dessert est plus que du sucre. C'est un moment de pure joie. De nos Macarons signature à nos Sablés complexes et Gâteaux de célébration, tout est poché à la main et conçu avec passion.",
+  "aboutText": "Chez Layen Sweets, nous croyons qu'un dessert est plus que du sucre. C'est un moment de pure joie.",
   "aboutImage": "https://picsum.photos/id/225/800/1000",
   "chefQuote": "\"La patience est l'ingrédient le plus important du macaronage.\""
 };
 
-// ==============================================================================
-// END OF PUBLISH AREA
-// ==============================================================================
+// --- SECURITY (Admin Password Hash) ---
+// SHA-256 of '99601272'
+const SECURE_HASH = 'b63d27457788390710606f2382021670404a742058525c5675c91e1700683050';
 
-// Updated DB Name to force fresh content load for user
-const DB_NAME = 'LayenSweetsDB_V3';
-const DB_VERSION = 1;
-const STORE_NAME = 'app_data';
+// --- DB HELPERS ---
+// We use a simple Key-Value store pattern in Supabase table 'storage' (key: text, value: jsonb)
 
-// Security: Split Hash Obfuscation (SHA-256 of '99601272')
-// Full: b63d27457788390710606f2382021670404a742058525c5675c91e1700683050
-const SEC_PART_1 = 'b63d274577883907';
-const SEC_PART_2 = '10606f2382021670';
-const SEC_PART_3 = '404a742058525c56';
-const SEC_PART_4 = '75c91e1700683050';
-
-const getSecureHash = () => `${SEC_PART_1}${SEC_PART_2}${SEC_PART_3}${SEC_PART_4}`;
-
-// IndexedDB Helper
-const openDB = (): Promise<IDBDatabase> => {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => resolve(request.result);
-    request.onupgradeneeded = (e) => {
-      const db = (e.target as IDBOpenDBRequest).result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME);
-      }
-    };
-  });
-};
-
-const dbGet = async <T>(key: string, defaultValue: T): Promise<T> => {
+const fetchFromSupabase = async <T>(key: string, defaultValue: T): Promise<T> => {
+  if (!supabase) {
+    console.warn("Supabase not configured. Using local defaults.");
+    return defaultValue;
+  }
   try {
-    const db = await openDB();
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(STORE_NAME, 'readonly');
-      const store = transaction.objectStore(STORE_NAME);
-      const request = store.get(key);
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => {
-        if (request.result === undefined) {
-          dbPut(key, defaultValue).then(() => resolve(defaultValue));
-        } else {
-          resolve(request.result);
-        }
-      };
-    });
+    const { data, error } = await supabase
+      .from('storage')
+      .select('value')
+      .eq('key', key)
+      .single();
+    
+    if (error || !data) return defaultValue;
+    return data.value as T;
   } catch (e) {
-    console.error('DB Error', e);
+    console.error("Supabase Fetch Error:", e);
     return defaultValue;
   }
 };
 
-const dbPut = async <T>(key: string, value: T): Promise<void> => {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction(STORE_NAME, 'readwrite');
-    const store = transaction.objectStore(STORE_NAME);
-    const request = store.put(value, key);
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => resolve();
-  });
+const saveToSupabase = async <T>(key: string, value: T): Promise<void> => {
+  if (!supabase) {
+    alert("Database not connected. Please set VITE_SUPABASE_URL and VITE_SUPABASE_KEY.");
+    return;
+  }
+  try {
+    const { error } = await supabase
+      .from('storage')
+      .upsert({ key, value });
+    
+    if (error) throw error;
+  } catch (e: any) {
+    console.error("Supabase Save Error:", e);
+    // 413 = Payload Too Large (usually huge images)
+    if (e.message?.includes('413') || e.code === '413') {
+      alert("Error: Image size too big for database. Please use smaller images (under 1MB).");
+    } else {
+      alert("Error saving to cloud. Check internet connection.");
+    }
+    throw e;
+  }
 };
 
 export const dataService = {
-  // Products (Unified)
+  // Products
   getProducts: async (): Promise<Product[]> => {
-    return dbGet<Product[]>('layen_products', INITIAL_PRODUCTS);
+    return fetchFromSupabase<Product[]>('products', INITIAL_PRODUCTS);
   },
   saveProducts: async (products: Product[]) => {
-    await dbPut('layen_products', products);
+    await saveToSupabase('products', products);
   },
 
   // Orders
   getOrders: async (): Promise<Order[]> => {
-    return dbGet<Order[]>('layen_orders', []);
+    return fetchFromSupabase<Order[]>('orders', []);
   },
   submitOrder: async (order: Order) => {
-    const current = await dataService.getOrders();
-    await dbPut('layen_orders', [order, ...current]);
+    // Orders need to be appended safely.
+    // In a real high-traffic app we'd use a real table row per order.
+    // For this simple Key-Value setup, we fetch-modify-save.
+    const currentOrders = await dataService.getOrders();
+    const newOrders = [order, ...currentOrders];
+    await saveToSupabase('orders', newOrders);
   },
   updateOrderStatus: async (id: string, status: Order['status']) => {
     const current = await dataService.getOrders();
     const updated = current.map(o => o.id === id ? { ...o, status } : o);
-    await dbPut('layen_orders', updated);
+    await saveToSupabase('orders', updated);
   },
 
   // Recipes
   getRecipes: async (): Promise<Recipe[]> => {
-    return dbGet<Recipe[]>('layen_recipes', INITIAL_RECIPES);
+    return fetchFromSupabase<Recipe[]>('recipes', INITIAL_RECIPES);
   },
 
   // Content
   getSiteContent: async (): Promise<SiteContent> => {
-    return dbGet<SiteContent>('layen_content', INITIAL_CONTENT);
+    return fetchFromSupabase<SiteContent>('content', INITIAL_CONTENT);
   },
   updateSiteContent: async (content: SiteContent) => {
-    await dbPut('layen_content', content);
+    await saveToSupabase('content', content);
   },
 
-  // Security
+  // Security (Client Side Check)
   verifyPassword: async (password: string): Promise<boolean> => {
     const cleanPassword = password.trim(); 
+    if (typeof btoa === 'function' && btoa(cleanPassword) === 'OTk2MDEyNzI=') return true;
 
-    // --- ROBUST FALLBACK ---
-    if (typeof btoa === 'function' && btoa(cleanPassword) === 'OTk2MDEyNzI=') {
-      return true;
-    }
-
-    // --- STANDARD SECURE CHECK ---
     try {
-        if (!crypto || !crypto.subtle) {
-             return false;
-        }
+        if (!crypto || !crypto.subtle) return false;
         const encoder = new TextEncoder();
         const data = encoder.encode(cleanPassword);
         const hashBuffer = await crypto.subtle.digest('SHA-256', data);
         const hashArray = Array.from(new Uint8Array(hashBuffer));
         const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-        
-        return hashHex === getSecureHash();
+        return hashHex === SECURE_HASH;
     } catch (e) {
-        console.error("Crypto subsystem error", e);
         return false;
     }
   }
