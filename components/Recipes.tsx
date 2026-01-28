@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Recipe, Language } from '../types';
+import { Recipe, Language, SiteContent } from '../types';
 import { dataService } from '../services/dataService';
 import { FadeIn } from './FadeIn';
 import { getTranslation } from '../translations';
 
 interface RecipesProps {
   language: Language;
+  content: SiteContent;
 }
 
-export const Recipes: React.FC<RecipesProps> = ({ language }) => {
+export const Recipes: React.FC<RecipesProps> = ({ language, content }) => {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const t = getTranslation(language);
 
@@ -51,7 +52,7 @@ export const Recipes: React.FC<RecipesProps> = ({ language }) => {
                  <span className="text-2xl">✨</span>
                </div>
                <h3 className="text-xl font-serif text-layen-dark mb-2">{t.recipes.secretTitle}</h3>
-               <p className="text-gray-500 font-light mb-6">"La patience est l'ingrédient le plus important du macaronage. Rush the drying process, and the feet will not form."</p>
+               <p className="text-gray-500 font-light mb-6">"{content.chefQuote}"</p>
                <span className="font-serif italic text-layen-gold">- Chef Layen</span>
              </article>
           </FadeIn>

@@ -144,6 +144,9 @@ export const dataService = {
   getRecipes: async (): Promise<Recipe[]> => {
     return fetchFromSupabase<Recipe[]>('recipes', INITIAL_RECIPES);
   },
+  saveRecipes: async (recipes: Recipe[]) => {
+    await saveToSupabase('recipes', recipes);
+  },
 
   // Content
   getSiteContent: async (): Promise<SiteContent> => {

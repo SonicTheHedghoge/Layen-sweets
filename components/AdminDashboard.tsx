@@ -15,16 +15,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
   // Data State
   const [orders, setOrders] = useState<Order[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [content, setContent] = useState<SiteContent>(INITIAL_CONTENT);
   
   // UI State
-  const [activeTab, setActiveTab] = useState<'orders' | 'products' | 'content'>('orders');
+  const [activeTab, setActiveTab] = useState<'orders' | 'products' | 'recipes' | 'content'>('orders');
   const [saveStatus, setSaveStatus] = useState('');
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
   
   // Product Edit State
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isNewProduct, setIsNewProduct] = useState(false);
+
+  // Recipe Edit State
+  const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
+  const [isNewRecipe, setIsNewRecipe] = useState(false);
 
   // Check DB Connection on mount
   useEffect(() => {
@@ -53,14 +58,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
   useEffect(() => {
     if (isAuthenticated) {
       const loadData = async () => {
-        const [loadedOrders, loadedContent, loadedProducts] = await Promise.all([
+        const [loadedOrders, loadedContent, loadedProducts, loadedRecipes] = await Promise.all([
           dataService.getOrders(),
           dataService.getSiteContent(),
-          dataService.getProducts()
+          dataService.getProducts(),
+          dataService.getRecipes()
         ]);
         setOrders(loadedOrders);
         setContent(loadedContent);
         setProducts(loadedProducts);
+        setRecipes(loadedRecipes);
       };
       loadData();
     }
@@ -109,11 +116,42 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
     }
   };
 
+  const handleSaveRecipe = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingRecipe) return;
+
+    let updatedRecipes = [...recipes];
+    if (isNewRecipe) {
+      updatedRecipes.push(editingRecipe);
+    } else {
+      updatedRecipes = updatedRecipes.map(r => r.id === editingRecipe.id ? editingRecipe : r);
+    }
+
+    try {
+      setSaveStatus('Publishing Live...');
+      await dataService.saveRecipes(updatedRecipes);
+      setRecipes(updatedRecipes);
+      setEditingRecipe(null);
+      setSaveStatus('✅ Story Updated Live!');
+      setTimeout(() => setSaveStatus(''), 3000);
+    } catch (error) {
+      setSaveStatus('❌ Save Failed');
+    }
+  };
+
   const deleteProduct = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this product?')) {
       const updated = products.filter(p => p.id !== id);
       await dataService.saveProducts(updated);
       setProducts(updated);
+    }
+  };
+
+  const deleteRecipe = async (id: string) => {
+    if (window.confirm('Are you sure you want to delete this story?')) {
+      const updated = recipes.filter(r => r.id !== id);
+      await dataService.saveRecipes(updated);
+      setRecipes(updated);
     }
   };
 
@@ -132,10 +170,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
     setIsNewProduct(true);
   };
 
+  const createNewRecipe = () => {
+    setEditingRecipe({
+      id: Date.now().toString(),
+      title: 'New Story',
+      content: '',
+      image: ''
+    });
+    setIsNewRecipe(true);
+  };
+
   // --- GENERIC UPLOAD HANDLER ---
   const handleFileUpload = (
     e: React.ChangeEvent<HTMLInputElement>, 
-    targetType: 'content' | 'product', 
+    targetType: 'content' | 'product' | 'recipe', 
     field: string
   ) => {
     const file = e.target.files?.[0];
@@ -148,7 +196,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
       return;
     }
 
-    const key = targetType === 'content' ? field : 'productImage';
+    let key = '';
+    if (targetType === 'content') key = field;
+    else if (targetType === 'product') key = 'productImage';
+    else if (targetType === 'recipe') key = 'recipeImage';
+
     setUploadProgress(prev => ({ ...prev, [key]: 1 }));
 
     const reader = new FileReader();
@@ -163,6 +215,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
         setContent(prev => ({ ...prev, [field]: result }));
       } else if (targetType === 'product' && editingProduct) {
         setEditingProduct({ ...editingProduct, image: result });
+      } else if (targetType === 'recipe' && editingRecipe) {
+        setEditingRecipe({ ...editingRecipe, image: result });
       }
       
       setTimeout(() => setUploadProgress(prev => { const n = {...prev}; delete n[key]; return n; }), 500);
@@ -171,8 +225,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
     reader.readAsDataURL(file);
   };
 
-  const renderUploadButton = (targetType: 'content' | 'product', field: string, currentValue: string) => {
-    const key = targetType === 'content' ? field : 'productImage';
+  const renderUploadButton = (targetType: 'content' | 'product' | 'recipe', field: string, currentValue: string) => {
+    let key = '';
+    if (targetType === 'content') key = field;
+    else if (targetType === 'product') key = 'productImage';
+    else if (targetType === 'recipe') key = 'recipeImage';
+
     const progress = uploadProgress[key];
     const isBase64 = currentValue?.startsWith('data:');
     const displayValue = isBase64 ? '' : currentValue;
@@ -186,7 +244,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
             onChange={(e) => {
               const val = e.target.value;
               if (targetType === 'content') setContent(p => ({ ...p, [field]: val }));
-              else if (editingProduct) setEditingProduct({ ...editingProduct, image: val });
+              else if (targetType === 'product' && editingProduct) setEditingProduct({ ...editingProduct, image: val });
+              else if (targetType === 'recipe' && editingRecipe) setEditingRecipe({ ...editingRecipe, image: val });
             }}
             className={`flex-grow border-b border-gray-300 py-2 bg-transparent text-sm focus:border-layen-gold outline-none transition-colors ${isBase64 ? 'text-green-600 font-medium italic' : ''}`}
             placeholder={placeholder}
@@ -255,7 +314,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
           </div>
           
           <nav className="p-6 space-y-2 mt-4">
-            {['orders', 'products', 'content'].map(tab => (
+            {['orders', 'products', 'recipes', 'content'].map(tab => (
               <button 
                 key={tab}
                 onClick={() => setActiveTab(tab as any)}
@@ -265,7 +324,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
                     : 'border-transparent text-gray-500 hover:text-white hover:bg-white/5'
                 }`}
               >
-                {tab === 'content' ? 'Site Content' : tab}
+                {tab === 'content' ? 'Site Content' : tab.charAt(0).toUpperCase() + tab.slice(1)}
               </button>
             ))}
           </nav>
@@ -455,6 +514,78 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
             </div>
           )}
 
+          {/* RECIPES TAB */}
+          {activeTab === 'recipes' && (
+            <div>
+               {!editingRecipe ? (
+                 <>
+                   <div className="flex justify-between items-center mb-10 pb-6 border-b border-gray-100">
+                      <h3 className="text-2xl font-serif text-[#1a1a1a]">Behind The Scenes / Stories</h3>
+                      <button onClick={createNewRecipe} className="bg-[#1a1a1a] text-white px-8 py-3 text-[10px] font-bold uppercase tracking-widest hover:bg-layen-gold transition-colors shadow-xl">
+                        + New Story
+                      </button>
+                   </div>
+                   <div className="grid md:grid-cols-2 gap-8">
+                     {recipes.map(recipe => (
+                       <div key={recipe.id} className="group border border-gray-100 p-0 hover:shadow-2xl hover:border-layen-gold/20 transition-all duration-500 bg-white relative overflow-hidden flex flex-col">
+                         <div className="h-64 w-full bg-gray-50 mb-0 overflow-hidden relative">
+                           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors z-10"></div>
+                           <img src={recipe.image} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                         </div>
+                         <div className="p-6 flex-grow">
+                           <h4 className="font-bold text-[#1a1a1a] text-xl font-serif mb-2">{recipe.title}</h4>
+                           <p className="text-gray-500 font-sans text-sm line-clamp-3 leading-relaxed">{recipe.content}</p>
+                         </div>
+                         <div className="flex border-t border-gray-50">
+                            <button onClick={() => { setEditingRecipe(recipe); setIsNewRecipe(false); }} className="flex-1 py-4 text-[9px] font-bold text-gray-500 uppercase hover:bg-gray-50 hover:text-[#1a1a1a] transition-colors">Edit Story</button>
+                            <div className="w-[1px] bg-gray-50"></div>
+                            <button onClick={() => deleteRecipe(recipe.id)} className="flex-1 py-4 text-[9px] font-bold text-red-300 uppercase hover:bg-red-50 hover:text-red-500 transition-colors">Remove</button>
+                         </div>
+                       </div>
+                     ))}
+                   </div>
+                   {recipes.length === 0 && (
+                     <div className="text-center py-16 bg-gray-50 border border-dashed border-gray-200 rounded-sm">
+                       <p className="text-gray-400 italic">No stories available. Create one to show "Les Coulisses" content.</p>
+                     </div>
+                   )}
+                 </>
+               ) : (
+                 <div className="max-w-4xl mx-auto">
+                    <div className="flex justify-between items-center mb-10 pb-6 border-b border-gray-100">
+                      <h3 className="text-3xl font-serif text-[#1a1a1a]">{isNewRecipe ? 'New Story' : 'Edit Story'}</h3>
+                      <button onClick={() => setEditingRecipe(null)} className="text-[10px] text-gray-400 hover:text-layen-gold uppercase tracking-widest transition-colors">Cancel & Close</button>
+                    </div>
+                    <form onSubmit={handleSaveRecipe} className="grid md:grid-cols-2 gap-12">
+                       <div className="space-y-8">
+                          <div>
+                            <label className="text-[9px] text-gray-400 uppercase tracking-widest font-bold block mb-3">Title</label>
+                            <input required type="text" value={editingRecipe.title} onChange={e => setEditingRecipe({...editingRecipe, title: e.target.value})} className="w-full border-b border-gray-200 py-3 text-lg font-serif focus:border-layen-gold outline-none transition-colors" />
+                          </div>
+                          <div>
+                             <label className="text-[9px] text-gray-400 uppercase tracking-widest font-bold block mb-3">Story Content</label>
+                             <textarea required value={editingRecipe.content} onChange={e => setEditingRecipe({...editingRecipe, content: e.target.value})} className="w-full border border-gray-200 p-4 h-64 rounded-sm focus:border-layen-gold outline-none transition-colors resize-none leading-relaxed" placeholder="Tell the story behind the sweets..." />
+                          </div>
+                       </div>
+                       <div className="space-y-8">
+                          <div>
+                            <label className="text-[9px] text-gray-400 uppercase tracking-widest font-bold block mb-3">Story Image (Les Coulisses)</label>
+                            <div className="bg-gray-50/50 border border-dashed border-gray-200 p-8 text-center rounded-sm hover:border-layen-gold/30 transition-colors">
+                               {editingRecipe.image && <img src={editingRecipe.image} className="h-48 mx-auto mb-6 object-cover shadow-md w-full" />}
+                               {renderUploadButton('recipe', 'recipeImage', editingRecipe.image)}
+                            </div>
+                          </div>
+                          
+                          <button type="submit" className="w-full bg-layen-gold text-white py-4 font-bold uppercase tracking-widest hover:bg-[#1a1a1a] transition-colors shadow-xl text-xs">
+                            ☁️ Publish Story Live
+                          </button>
+                       </div>
+                    </form>
+                 </div>
+               )}
+            </div>
+          )}
+
           {/* CONTENT TAB */}
           {activeTab === 'content' && (
             <div className="max-w-6xl mx-auto">
@@ -515,6 +646,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onExit }) => {
                         <div className="mb-6">
                            <label className="text-[9px] text-gray-400 uppercase tracking-widest font-bold block mb-3">Story Description</label>
                            <textarea value={content.aboutText} onChange={e => setContent({...content, aboutText: e.target.value})} className="w-full border border-gray-200 p-4 rounded-sm h-48 text-sm leading-relaxed focus:border-layen-gold outline-none transition-colors resize-none" />
+                        </div>
+                        <div className="mb-6">
+                           <label className="text-[9px] text-gray-400 uppercase tracking-widest font-bold block mb-3">Chef Secret Quote (Footer of Recipes)</label>
+                           <textarea value={content.chefQuote} onChange={e => setContent({...content, chefQuote: e.target.value})} className="w-full border border-gray-200 p-4 rounded-sm h-24 text-sm leading-relaxed focus:border-layen-gold outline-none transition-colors resize-none italic" placeholder="Enter the secret quote..." />
                         </div>
                         <div>
                            <label className="text-[9px] text-gray-400 uppercase tracking-widest font-bold block mb-3">Featured Image</label>

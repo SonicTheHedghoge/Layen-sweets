@@ -36,7 +36,7 @@ function App() {
             <Hero onOrder={() => setCurrentView('ORDER')} content={siteContent} language={language} />
             <About content={siteContent} language={language} />
             <Gallery language={language} />
-            <Recipes language={language} />
+            <Recipes language={language} content={siteContent} />
           </>
         );
       case 'ABOUT':
@@ -46,7 +46,7 @@ function App() {
       case 'ORDER':
         return <OrderForm language={language} />;
       case 'RECIPES':
-        return <Recipes language={language} />;
+        return <Recipes language={language} content={siteContent} />;
       case 'ADMIN':
         return <AdminDashboard onExit={() => setCurrentView('HOME')} />;
       case 'CONTACT':
