@@ -15,10 +15,9 @@ import { LayenAI } from './components/LayenAI';
 interface SplashScreenProps {
   isReady: boolean;
   onEnter: () => void;
-  heroImage: string;
 }
 
-const SplashScreen: React.FC<SplashScreenProps> = ({ isReady, onEnter, heroImage }) => {
+const SplashScreen: React.FC<SplashScreenProps> = ({ isReady, onEnter }) => {
   const [showButton, setShowButton] = useState(false);
 
   // Delay button appearance slightly for dramatic effect
@@ -81,7 +80,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ isReady, onEnter, heroImage
                   // Loaded Image
                   <>
                    <img 
-                      src={heroImage || "https://images.unsplash.com/photo-1569864358642-9d1684040f43?auto=format&fit=crop&w=1000&q=80"} 
+                      src="https://i.ibb.co/9mYr2xRD/Gemini-Generated-Image-6uo3yg6uo3yg6uo3.png"
                       alt="Luxury Sweets" 
                       className="w-full h-full object-cover animate-fade-in grayscale-[10%] group-hover:grayscale-0 transition-all duration-1000"
                    />
@@ -166,7 +165,6 @@ function App() {
       <SplashScreen 
         isReady={!isLoading} 
         onEnter={() => setHasEntered(true)} 
-        heroImage={siteContent.heroImage}
       />
     );
   }
