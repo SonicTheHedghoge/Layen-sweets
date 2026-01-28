@@ -31,6 +31,10 @@
               'float': 'float 6s ease-in-out infinite',
               'fade-in-up': 'fadeInUp 1s ease-out forwards',
               'fade-in': 'fadeIn 1.5s ease-out forwards',
+              'shine': 'shine 1s',
+            },
+            backgroundImage: {
+              'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
             },
             keyframes: {
               float: {
@@ -44,6 +48,9 @@
               fadeIn: {
                 '0%': { opacity: '0' },
                 '100%': { opacity: '1' },
+              },
+              shine: {
+                '100%': { left: '125%' },
               }
             }
           }
