@@ -11,22 +11,68 @@ import { AdminDashboard } from './components/AdminDashboard';
 import { Footer } from './components/Footer';
 import { LayenAI } from './components/LayenAI';
 
+// --- LOADING COMPONENT ---
+const SplashScreen = () => (
+  <div className="fixed inset-0 z-[100] bg-layen-cream flex flex-col items-center justify-center transition-opacity duration-1000">
+    <div className="text-center animate-pulse">
+      <div className="w-16 h-16 border-2 border-layen-gold rounded-full flex items-center justify-center mx-auto mb-6">
+        <span className="font-serif text-2xl text-layen-gold italic">L</span>
+      </div>
+      <h1 className="text-3xl font-serif text-layen-dark tracking-[0.2em] uppercase mb-2">Layen Sweets</h1>
+      <div className="h-[1px] w-12 bg-layen-gold mx-auto"></div>
+    </div>
+  </div>
+);
+
 function App() {
+  // Start with loading = true to block the default images
+  const [isLoading, setIsLoading] = useState(true);
   const [currentView, setCurrentView] = useState<ViewState>('HOME');
   const [siteContent, setSiteContent] = useState<SiteContent>(INITIAL_CONTENT);
   const [language, setLanguage] = useState<Language>('fr');
   const [products, setProducts] = useState<Product[]>([]);
 
-  // Refresh content whenever we switch views (in case Admin updated it)
+  // Initial Data Load - BLOCKING
   useEffect(() => {
-    const loadContent = async () => {
-      const content = await dataService.getSiteContent();
-      const prods = await dataService.getProducts();
-      setSiteContent(content);
-      setProducts(prods);
+    const initData = async () => {
+      try {
+        // Fetch everything in parallel
+        const [content, prods] = await Promise.all([
+          dataService.getSiteContent(),
+          dataService.getProducts()
+        ]);
+        
+        setSiteContent(content);
+        setProducts(prods);
+      } catch (e) {
+        console.error("Failed to load live data", e);
+      } finally {
+        // Fade out loader after data is ready
+        // Small timeout to ensure the browser has time to paint the images
+        setTimeout(() => setIsLoading(false), 800);
+      }
     };
-    loadContent();
+
+    initData();
+  }, []);
+
+  // Refresh content whenever we switch views (in case Admin updated it)
+  // Non-blocking refresh
+  useEffect(() => {
+    if (!isLoading) {
+      const refreshData = async () => {
+        const content = await dataService.getSiteContent();
+        const prods = await dataService.getProducts();
+        setSiteContent(content);
+        setProducts(prods);
+      };
+      refreshData();
+    }
   }, [currentView]);
+
+  if (isLoading) {
+    return <SplashScreen />;
+  }
 
   const renderView = () => {
     switch (currentView) {
@@ -67,7 +113,7 @@ function App() {
   };
 
   return (
-    <div className={`min-h-screen flex flex-col font-sans text-layen-dark ${language === 'ar' ? 'font-arabic' : ''}`}>
+    <div className={`min-h-screen flex flex-col font-sans text-layen-dark ${language === 'ar' ? 'font-arabic' : ''} animate-fade-in`}>
       {currentView !== 'ADMIN' && (
         <Header 
           currentView={currentView} 
